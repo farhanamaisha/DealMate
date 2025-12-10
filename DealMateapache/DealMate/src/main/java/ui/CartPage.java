@@ -1,26 +1,32 @@
 package ui;
 
 import model.Product;
+import model.Order;
+import model.OrderItem;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class CartPage extends JPanel {
 
     private final List<Product> cart;
     private final JPanel contentCards;
     private final String backCard;
+    private final Consumer<List<Product>> onPlaceOrder; // callback to DashboardFrame
 
     private JTable cartTable;
     private CartTableModel cartModel;
 
-    public CartPage(List<Product> cart, JPanel contentCards, String backCard) {
+    // Updated constructor to take a callback
+    public CartPage(List<Product> cart, JPanel contentCards, String backCard, Consumer<List<Product>> onPlaceOrder) {
         this.cart = cart;
         this.contentCards = contentCards;
         this.backCard = backCard;
+        this.onPlaceOrder = onPlaceOrder;
 
         setLayout(new BorderLayout());
         initUI();
@@ -73,17 +79,16 @@ public class CartPage extends JPanel {
             return;
         }
 
-        StringBuilder summary = new StringBuilder("Order placed:\n");
-        double total = 0;
-        for (Product p : cart) {
-            summary.append(p.getName()).append(" - ৳").append(p.getPrice()).append("\n");
-            total += p.getPrice();
-        }
-        summary.append("Total: ৳").append(total);
+        // Delegate actual order creation to DashboardFrame via callback
+        onPlaceOrder.accept(cart);
 
-        JOptionPane.showMessageDialog(this, summary.toString());
+        // Clear cart UI
         cart.clear();
         cartModel.fireTableDataChanged();
+
+        // Optional: switch back to home page after placing order
+        CardLayout cl = (CardLayout) contentCards.getLayout();
+        cl.show(contentCards, backCard);
     }
 
     // Table Model

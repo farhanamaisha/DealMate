@@ -7,6 +7,9 @@ public class Order {
     private int id;
     private User user;
     private List<OrderItem> items;
+public void setItems(List<OrderItem> items) {
+    this.items = items;
+}
 
     public Order() {
         items = new ArrayList<>();

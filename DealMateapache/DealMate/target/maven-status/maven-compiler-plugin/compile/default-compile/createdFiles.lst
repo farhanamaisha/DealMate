@@ -7,6 +7,7 @@ ui\DealMateApp.class
 ui\FrontPage$1.class
 model\Product.class
 ui\DashboardFrame$2.class
+ui\CSVManager.class
 dao\UserDAO.class
 ui\RegisterFrame.class
 ui\DashboardFrame$BarChartPanel.class

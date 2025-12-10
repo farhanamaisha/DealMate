@@ -1,5 +1,5 @@
 package ui;
-
+import dao.OrderDAO;
 import dao.ProductDAO;
 import dao.UserDAO;
 import model.Product;
@@ -33,6 +33,8 @@ private final List<Product> cartProducts = new ArrayList<>();
     private final User currentUser;
     private final ProductDAO productDAO;
     private final UserDAO userDAO;
+    private final OrderDAO orderDAO;
+    
 
     private List<Product> products;
     private List<Order> orders;
@@ -69,6 +71,7 @@ private final List<Product> cartProducts = new ArrayList<>();
         this.currentUser = user;
         this.productDAO = new ProductDAO();
         this.userDAO = new UserDAO();
+        this.orderDAO = new OrderDAO(); 
         this.products = new ArrayList<>();
         this.orders = new ArrayList<>();
 
@@ -87,6 +90,8 @@ private final List<Product> cartProducts = new ArrayList<>();
         List<Product> p = productDAO.getAllProducts();
         products = (p != null) ? p : new ArrayList<>();
         // orders can be loaded from DAO if implemented
+         List<Order> o = orderDAO.getAllOrders();  // read saved orders
+    orders = (o != null) ? o : new ArrayList<>();
     }
 
     private void initUI() {
@@ -133,7 +138,28 @@ private final List<Product> cartProducts = new ArrayList<>();
 
         // default view
         ((CardLayout) contentCards.getLayout()).show(contentCards, "HOME");
-        contentCards.add(new CartPage(cartProducts, contentCards, "HOME"), "CART");
+        contentCards.add(new CartPage(cartProducts, contentCards, "HOME", cart -> {
+    // This code runs when "Place Order" is clicked
+    if (cart.isEmpty()) return;
+
+    for (Product p : cart) {
+        OrderItem it = new OrderItem();
+        it.setProduct(p);
+        it.setQuantity(1); // default quantity, can change later
+
+        Order o = new Order();
+        o.setId(orders.size() + 1);
+        o.setUser(currentUser);
+        o.getItems().add(it);
+
+        orders.add(o);
+    }
+
+    cart.clear(); // empty the cart
+    refreshAll(); // refresh home stats and recent orders
+    showToast("Order placed for " + cart.size() + " items!");
+}), "CART");
+
  }
 
     // ---------------- UI pieces ----------------
@@ -418,7 +444,7 @@ right.add(searchBox);
         actions.setOpaque(false);
         addProductBtn = new JButton("＋ Add Product");
         removeProductBtn = new JButton("− Remove Product");
-        placeOrderBtn = new JButton("🛒 Place Order");
+        placeOrderBtn = new JButton("🛒 Add to Cart");
 
         styleActionButton(addProductBtn);
         styleActionButton(removeProductBtn);
