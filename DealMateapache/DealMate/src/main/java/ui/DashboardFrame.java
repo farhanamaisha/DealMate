@@ -28,6 +28,7 @@ import java.util.List;
  * - This file aims to be self-contained and readable.
  */
 public class DashboardFrame extends JFrame {
+private final List<Product> cartProducts = new ArrayList<>();
 
     private final User currentUser;
     private final ProductDAO productDAO;
@@ -132,7 +133,8 @@ public class DashboardFrame extends JFrame {
 
         // default view
         ((CardLayout) contentCards.getLayout()).show(contentCards, "HOME");
-    }
+        contentCards.add(new CartPage(cartProducts, contentCards, "HOME"), "CART");
+ }
 
     // ---------------- UI pieces ----------------
 
@@ -160,6 +162,8 @@ public class DashboardFrame extends JFrame {
         nav.add(createNavButton("Home", "HOME", true));
         nav.add(createNavButton("Products", "PRODUCTS", false));
         nav.add(createNavButton("Orders", "ORDERS", false));
+        nav.add(createNavButton("Cart", "CART", false)); // <-- NEW CART BUTTON
+
         nav.add(createNavButton("Account", "ACCOUNT", false));
         nav.add(Box.createVerticalGlue());
         nav.add(createNavButton("Logout", "LOGOUT", false));
@@ -187,15 +191,55 @@ public class DashboardFrame extends JFrame {
         });
 
         btn.addActionListener(e -> {
-            if ("LOGOUT".equals(card)) {
-                logout();
-                return;
-            }
-            ((CardLayout) contentCards.getLayout()).show(contentCards, card);
-        });
+    if ("LOGOUT".equals(card)) {
+        logout();
+        return;
+    }
+    if ("CART".equals(card)) {
+    ((CardLayout) contentCards.getLayout()).show(contentCards, "CART");
+    return;
+}
+
+    ((CardLayout) contentCards.getLayout()).show(contentCards, card);
+});
+
 
         return btn;
     }
+    private JPanel searchPanel; // class-level
+
+private void openSearchPage(String query) {
+    if (query.isEmpty()) { showToast("Enter a search term."); return; }
+
+    List<Product> results = productDAO.searchProducts(query);
+
+    if (searchPanel == null) {
+        searchPanel = new JPanel(new BorderLayout());
+        searchPanel.setOpaque(false);
+        contentCards.add(searchPanel, "SEARCH");
+    }
+    searchPanel.removeAll();
+
+    JLabel title = new JLabel("Search Results for: " + query);
+    title.setFont(new Font("Segoe UI", Font.BOLD, 15));
+    title.setBorder(new EmptyBorder(10, 12, 10, 12));
+    title.setForeground(textColor);
+    searchPanel.add(title, BorderLayout.NORTH);
+
+    ProductTableModel model = new ProductTableModel(results);
+    JTable table = new JTable(model);
+    styleTable(table);
+    JScrollPane scroll = new JScrollPane(table);
+    JPanel container = new RoundedPanel(12, cardColor);
+    container.setLayout(new BorderLayout());
+    container.setBorder(new EmptyBorder(12, 12, 12, 12));
+    container.add(scroll, BorderLayout.CENTER);
+    searchPanel.add(container, BorderLayout.CENTER);
+
+    ((CardLayout) contentCards.getLayout()).show(contentCards, "SEARCH");
+    contentCards.revalidate();
+    contentCards.repaint();
+}
 
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout());
@@ -221,8 +265,59 @@ public class DashboardFrame extends JFrame {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         right.setOpaque(false);
 
-        JTextField search = new JTextField();
-        search.setPreferredSize(new Dimension(240, 34));
+       // Search container (icon + field)
+JPanel searchBox = new JPanel(new BorderLayout());
+searchBox.setOpaque(false);
+searchBox.setBorder(BorderFactory.createLineBorder(new Color(235, 215, 221), 1));
+searchBox.setPreferredSize(new Dimension(260, 34));
+
+JLabel searchIcon = new JLabel("🔍");
+searchIcon.setBorder(new EmptyBorder(0, 8, 0, 6));
+searchIcon.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); // make clickable
+searchBox.add(searchIcon, BorderLayout.WEST);
+
+// Search field
+JTextField search = new JTextField();
+search.setBorder(null);
+search.setFont(uiFont);
+search.setOpaque(false);
+searchBox.add(search, BorderLayout.CENTER);
+
+// Placeholder text
+search.setText("Search products...");
+search.setForeground(Color.GRAY);
+search.addFocusListener(new FocusAdapter() {
+    @Override
+    public void focusGained(FocusEvent e) {
+        if (search.getText().equals("Search products...")) {
+            search.setText("");
+            search.setForeground(Color.BLACK);
+        }
+    }
+    @Override
+    public void focusLost(FocusEvent e) {
+        if (search.getText().isEmpty()) {
+            search.setForeground(Color.GRAY);
+            search.setText("Search products...");
+        }
+    }
+});
+
+// Action when Enter is pressed
+search.addActionListener(e -> openSearchPage(search.getText().trim()));
+
+// Action when icon is clicked
+searchIcon.addMouseListener(new MouseAdapter() {
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        openSearchPage(search.getText().trim());
+    }
+});
+
+// Add only the panel (remove extra search field add!)
+right.add(searchBox);
+
+
         search.setFont(uiFont);
         search.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(235, 215, 221), 1),
@@ -359,7 +454,13 @@ public class DashboardFrame extends JFrame {
         // hook actions
         addProductBtn.addActionListener(e -> onAddProduct());
         removeProductBtn.addActionListener(e -> onRemoveProduct());
-        placeOrderBtn.addActionListener(e -> onPlaceOrder());
+        placeOrderBtn.addActionListener(e -> {
+    int row = productsTable.getSelectedRow();
+    if (row < 0) return;
+    Product p = products.get(row);
+    cartProducts.add(p);  // add to cart
+    showToast(p.getName() + " added to cart!");
+});
 
         return productsPanel;
     }
